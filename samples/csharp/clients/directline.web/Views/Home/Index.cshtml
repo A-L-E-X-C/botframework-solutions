@@ -1,0 +1,30 @@
+﻿<div id="webchat" role="main"></div>
+<script src="https://cdn.botframework.com/botframework-webchat/latest/webchat.js"></script>
+<script>
+    (async function () {
+        const store = window.WebChat.createStore({}, ({ dispatch }) => next => action => {
+        if (action.type === 'DIRECT_LINE/CONNECT_FULFILLED') {
+            dispatch({
+                type: 'WEB_CHAT/SEND_EVENT',
+                payload: {
+                    name: 'webchat/join',
+                    value: {
+                        language: window.navigator.language
+                    }
+                }
+            });
+        }
+        return next(action);
+        });
+
+        window.WebChat.renderWebChat({
+            directLine: window.WebChat.createDirectLine({
+                token: '@ViewData["DirectLineToken"]'
+            }),
+            locale: '@ViewData["Locale"]',
+            store
+        }, document.getElementById('webchat'));
+
+        document.querySelector('#webchat > *').focus();
+    })().catch(err => console.error(err))
+</script>
