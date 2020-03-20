@@ -17,13 +17,26 @@
         return next(action);
         });
 
-        window.WebChat.renderWebChat({
-            directLine: window.WebChat.createDirectLine({
-                token: '@ViewData["DirectLineToken"]'
-            }),
+        const fetchCredentials = {
+            authorizationToken: '@ViewData["SpeechServiceAuthorizationToken"]',
+            region: '@ViewData["SpeechServiceRegionIdentifier"]'
+        };
+
+        const adapters = await window.WebChat.createDirectLineSpeechAdapters({
+            fetchCredentials
+        });
+
+        const settings = {
             locale: '@ViewData["Locale"]',
             store
-        }, document.getElementById('webchat'));
+        };
+
+        window.WebChat.renderWebChat(
+            {
+                ...adapters,
+                ...settings
+            },
+            document.getElementById('webchat'));
 
         document.querySelector('#webchat > *').focus();
     })().catch(err => console.error(err))

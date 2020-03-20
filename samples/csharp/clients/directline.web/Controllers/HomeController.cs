@@ -3,28 +3,30 @@
 
 using System.Diagnostics;
 using System.Net.Http;
-using System.Net.Http.Headers;
 using System.Text;
 using DirectLine.Web.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
-using Newtonsoft.Json;
 
 namespace DirectLine.Web.Controllers
 {
     public class HomeController : Controller
     {
-        private string directLineSecret;
-        private string botName;
+        private const string SpeechServiceTokenUriFormat = "https://{0}.api.cognitive.microsoft.com/sts/v1.0/issuetoken";
+        private const string SubscriptionKeyHeaderName = "Ocp-Apim-Subscription-Key";
 
-        public const string GenerateDirectLineTokenUrl = "https://directline.botframework.com/v3/directline/tokens/generate";
-        public const string AadObjectidentifierClaim = "http://schemas.microsoft.com/identity/claims/objectidentifier";
+        private string botName;
+        private string speechServiceRegionIdentifier;
+        private string speechServiceSubscriptionKey;
+        private string speechServiceTokenUri;
 
         public HomeController(IConfiguration configuration)
         {
             // Retrieve the Bot configuration
-            directLineSecret = configuration.GetSection("DirectLineSecret").Value;
-            botName = configuration.GetSection("BotName").Value;
+            this.botName = configuration.GetSection("BotName").Value;
+            this.speechServiceRegionIdentifier = configuration.GetSection("SpeechServiceRegionIdentfier").Value;
+            this.speechServiceSubscriptionKey = configuration.GetSection("SpeechServiceSubscriptionKey").Value;
+            this.speechServiceTokenUri = string.Format(SpeechServiceTokenUriFormat, this.speechServiceRegionIdentifier);
         }
 
         public IActionResult Index(string locale = "en-us")
@@ -32,24 +34,23 @@ namespace DirectLine.Web.Controllers
             // Get DirectLine Token
             // Pass the DirectLine Token, Speech Key and Voice Name
             // Note this approach will require magic code validation
-            var directLineToken = string.Empty;
+            string speechServiceAuthorizationToken = string.Empty;
             var directLineClient = new HttpClient();
-            directLineClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", directLineSecret);
+            directLineClient.DefaultRequestHeaders.Add(SubscriptionKeyHeaderName, this.speechServiceSubscriptionKey);
 
-            var response = directLineClient.PostAsync(GenerateDirectLineTokenUrl, new StringContent(string.Empty, Encoding.UTF8, "application/json")).Result;
+            HttpResponseMessage response = directLineClient.PostAsync(
+                this.speechServiceTokenUri,
+                new StringContent(string.Empty, Encoding.UTF8, "application/x-www-form-urlencoded")).Result;
 
             if (response.IsSuccessStatusCode)
             {
-                var responseString = response.Content.ReadAsStringAsync().Result;
-                var directLineResponse = JsonConvert.DeserializeObject<DirectLineResponse>(responseString);
-                directLineToken = directLineResponse.token;
+                speechServiceAuthorizationToken = response.Content.ReadAsStringAsync().Result;
             }
 
-            ViewData["Title"] = botName;
-
-            ViewData["DirectLineToken"] = directLineToken;
-
             ViewData["Locale"] = locale;
+            ViewData["SpeechServiceAuthorizationToken"] = speechServiceAuthorizationToken;
+            ViewData["SpeechServiceRegionIdentifier"] = this.speechServiceRegionIdentifier;
+            ViewData["Title"] = botName;
 
             return View();
         }
